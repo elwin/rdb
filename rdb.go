@@ -53,7 +53,7 @@ func (q Query) Where(attribute, operator string, value interface{}) Query {
 	return q
 }
 
-func (q Query) OrWhere(attribute, operator, value string) Query {
+func (q Query) OrWhere(attribute, operator string, value interface{}) Query {
 	q.condition = q.condition.OrWhere(attribute, operator, value)
 
 	return q
