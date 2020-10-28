@@ -7,19 +7,20 @@ import (
 )
 
 func TestCondition_OrWhere(t *testing.T) {
-
-	query := New().Table("users").
+	query, queryAttributes := New().Table("users").
 		Select("name", "email").
-		Where("age", ">", "18").ToSql()
-	assert.Equal(t, "SELECT name, email FROM users WHERE age > 18", query)
+		Where("age", ">", 18).ToSql()
+	assert.Equal(t, "SELECT name, email FROM users WHERE age > ?", query)
+	assert.Equal(t, attributes{18}, queryAttributes)
 
-	query = New().Table("users").
+	query, queryAttributes = New().Table("users").
 		Select("name", "email").
-		Where("age", ">", "18").
+		Where("age", ">", 18).
 		OrWhereClause(func(c Condition) Condition {
-			return c.Where("age", ">", "16").
-				Where("entitled", "=", "1")
+			return c.Where("age", ">", 16).
+				Where("entitled", "=", 1)
 		}).
 		ToSql()
-	assert.Equal(t, "SELECT name, email FROM users WHERE age > 18 OR (age > 16 AND entitled = 1)", query)
+	assert.Equal(t, "SELECT name, email FROM users WHERE age > ? OR (age > ? AND entitled = ?)", query)
+	assert.Equal(t, attributes{18, 16, 1}, queryAttributes)
 }

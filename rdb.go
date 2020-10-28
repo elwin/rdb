@@ -15,8 +15,8 @@ func New() Query {
 	return Query{}
 }
 
-func (q Query) ToSql() string {
-	return fmt.Sprintf("SELECT %s FROM %s WHERE %s", q.attributes, q.table, q.condition)
+func (q Query) ToSql() (string, attributes) {
+	return fmt.Sprintf("SELECT %s FROM %s WHERE %s", q.attributes, q.table, q.condition.query), q.condition.attributes
 }
 
 func (q Query) Table(table string) Query {
@@ -31,7 +31,7 @@ func (q Query) Select(attributes ...string) Query {
 	return q
 }
 
-func (q Query) Where(attribute, operator, value string) Query {
+func (q Query) Where(attribute, operator string, value interface{}) Query {
 	q.condition = q.condition.Where(attribute, operator, value)
 
 	return q
@@ -49,34 +49,53 @@ func (q Query) OrWhereClause(f func(c Condition) Condition) Query {
 	return q
 }
 
-type Condition string
-
-func (c Condition) OrWhere(attribute, operator, value string) Condition {
-	statement := Condition(fmt.Sprintf("%s %s %s", attribute, operator, value)) // not injection safe
-
-	if c == "" {
-		return statement
-	}
-
-	return " OR " + statement
+type Condition struct {
+	query      string
+	attributes attributes
 }
 
-func (c Condition) Where(attribute, operator, value string) Condition {
-	statement := Condition(fmt.Sprintf("%s %s %s", attribute, operator, value)) // not injection safe
+type attributes []interface{}
 
-	if c == "" {
-		return statement
+func (a attributes) join(b attributes) attributes {
+	c := make(attributes, len(a)+len(b))
+	copy(c[:len(a)], a)
+	copy(c[len(a):], b)
+
+	return c
+}
+
+func (c Condition) join(glue string, b Condition) Condition {
+	if c.query == "" {
+		return b
 	}
 
-	return c + " AND " + statement
+	return Condition{
+		query:      fmt.Sprintf("%s %s %s", c.query, glue, b.query),
+		attributes: c.attributes.join(b.attributes),
+	}
+}
+
+func (c Condition) OrWhere(attribute, operator string, value interface{}) Condition {
+	statement := Condition{
+		query:      fmt.Sprintf("%s %s ?", attribute, operator),
+		attributes: []interface{}{value},
+	}
+
+	return c.join("OR", statement)
+}
+
+func (c Condition) Where(attribute, operator string, value interface{}) Condition {
+	statement := Condition{
+		query:      fmt.Sprintf("%s %s ?", attribute, operator),
+		attributes: []interface{}{value},
+	}
+
+	return c.join("AND", statement)
 }
 
 func (c Condition) OrWhereClosure(f func(c Condition) Condition) Condition {
-	statement := f("")
+	statement := f(Condition{})
+	statement.query = fmt.Sprintf("(%s)", statement.query)
 
-	if c == "" {
-		return statement
-	}
-
-	return c + " OR (" + statement + ")"
+	return c.join("OR", statement)
 }
