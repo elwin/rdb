@@ -9,14 +9,25 @@ type Query struct {
 	table      string
 	attributes string
 	condition  Condition
+	groupBy    []string
 }
 
 func New() Query {
 	return Query{}
 }
 
-func (q Query) ToSql() (string, attributes) {
-	return fmt.Sprintf("SELECT %s FROM %s WHERE %s", q.attributes, q.table, q.condition.query), q.condition.attributes
+func (q Query) ToSql() (string, Attributes) {
+	output := fmt.Sprintf("SELECT %s FROM %s", q.attributes, q.table)
+
+	if q.condition.query != "" {
+		output += " WHERE " + q.condition.query
+	}
+
+	if len(q.groupBy) > 0 {
+		output += " GROUP BY " + strings.Join(q.groupBy, ", ")
+	}
+
+	return output, q.condition.attributes
 }
 
 func (q Query) Table(table string) Query {
@@ -49,15 +60,24 @@ func (q Query) OrWhereClause(f func(c Condition) Condition) Query {
 	return q
 }
 
-type Condition struct {
-	query      string
-	attributes attributes
+func (q Query) GroupBy(attributes ...string) Query {
+	groupBy := make([]string, len(q.groupBy) +len(attributes))
+	copy(groupBy[:len(q.groupBy)], q.groupBy)
+	copy(groupBy[len(q.groupBy):], attributes)
+	q.groupBy = groupBy
+
+	return q
 }
 
-type attributes []interface{}
+type Condition struct {
+	query      string
+	attributes Attributes
+}
 
-func (a attributes) join(b attributes) attributes {
-	c := make(attributes, len(a)+len(b))
+type Attributes []interface{}
+
+func (a Attributes) join(b Attributes) Attributes {
+	c := make(Attributes, len(a)+len(b))
 	copy(c[:len(a)], a)
 	copy(c[len(a):], b)
 

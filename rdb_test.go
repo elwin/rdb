@@ -11,7 +11,7 @@ func TestCondition_OrWhere(t *testing.T) {
 		Select("name", "email").
 		Where("age", ">", 18).ToSql()
 	assert.Equal(t, "SELECT name, email FROM users WHERE age > ?", query)
-	assert.Equal(t, attributes{18}, queryAttributes)
+	assert.Equal(t, Attributes{18}, queryAttributes)
 
 	query, queryAttributes = New().Table("users").
 		Select("name", "email").
@@ -22,5 +22,12 @@ func TestCondition_OrWhere(t *testing.T) {
 		}).
 		ToSql()
 	assert.Equal(t, "SELECT name, email FROM users WHERE age > ? OR (age > ? AND entitled = ?)", query)
-	assert.Equal(t, attributes{18, 16, 1}, queryAttributes)
+	assert.Equal(t, Attributes{18, 16, 1}, queryAttributes)
+
+	query, queryAttributes = New().Table("users").
+		Select("age", "count(*)").
+		GroupBy("age").
+		ToSql()
+	assert.Equal(t, "SELECT age, count(*) FROM users GROUP BY age", query)
+	assert.Equal(t, Attributes(nil), queryAttributes)
 }
