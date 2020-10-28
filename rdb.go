@@ -9,7 +9,8 @@ type Query struct {
 	table      string
 	attributes string
 	condition  Condition
-	groupBy    []string
+	groupBy    stringSlice
+	orderBy    stringSlice
 }
 
 func New() Query {
@@ -25,6 +26,10 @@ func (q Query) ToSql() (string, Attributes) {
 
 	if len(q.groupBy) > 0 {
 		output += " GROUP BY " + strings.Join(q.groupBy, ", ")
+	}
+
+	if len(q.orderBy) > 0 {
+		output += " ORDER BY " + strings.Join(q.orderBy, ", ")
 	}
 
 	return output, q.condition.attributes
@@ -61,10 +66,19 @@ func (q Query) OrWhereClause(f func(c Condition) Condition) Query {
 }
 
 func (q Query) GroupBy(attributes ...string) Query {
-	groupBy := make([]string, len(q.groupBy) +len(attributes))
-	copy(groupBy[:len(q.groupBy)], q.groupBy)
-	copy(groupBy[len(q.groupBy):], attributes)
-	q.groupBy = groupBy
+	q.groupBy = append(q.groupBy.Copy(), attributes...)
+
+	return q
+}
+
+func (q Query) OrderByAsc(attribute string) Query {
+	q.orderBy = append(q.orderBy.Copy(), attribute + " ASC")
+
+	return q
+}
+
+func (q Query) OrderByDesc(attribute string) Query {
+	q.orderBy = append(q.orderBy.Copy(), attribute + " DESC")
 
 	return q
 }
@@ -118,4 +132,12 @@ func (c Condition) OrWhereClosure(f func(c Condition) Condition) Condition {
 	statement.query = fmt.Sprintf("(%s)", statement.query)
 
 	return c.join("OR", statement)
+}
+
+type stringSlice []string
+func (s stringSlice) Copy() stringSlice {
+	out := make(stringSlice, len(s))
+	copy(out, s)
+
+	return out
 }

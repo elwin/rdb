@@ -30,4 +30,12 @@ func TestCondition_OrWhere(t *testing.T) {
 		ToSql()
 	assert.Equal(t, "SELECT age, count(*) FROM users GROUP BY age", query)
 	assert.Equal(t, Attributes(nil), queryAttributes)
+
+	query, queryAttributes = New().Table("users").
+		Select("*").
+		OrderByAsc("id").
+		OrderByDesc("age").
+		ToSql()
+	assert.Equal(t, "SELECT * FROM users ORDER BY id ASC, age DESC", query)
+	assert.Equal(t, Attributes(nil), queryAttributes)
 }
